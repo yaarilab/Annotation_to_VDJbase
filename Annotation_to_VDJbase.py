@@ -2,12 +2,12 @@ import os
 import shutil
 import json
 import pandas as pd
+import argparse
 
-SEQUENCE_DATA_STORE = r'/home/bcrlab/malachy7/sequence_data_store_test/'
-DIGBY_DATA_SAMPLES_PATH = r'misc/work/VDJbase/digby_data/AIRR-seq/Human/IGH'
+
 REQUIRED_FILES = ['haplotype', 'genotype', 'ogrdb_plots.pdf', 'ogrdb_report.csv']
-SPLIT = '/'
-
+#SPLIT = '/'
+SPLIT= '\\'
 # Extracts repertoire, subject, and sample IDs from a JSON file
 def get_repertoire_details(file_path):
     
@@ -87,7 +87,7 @@ def merge_json_data_recursive(original_data, new_data):
     Recursively merges new_data into original_data. If a key in new_data already exists in original_data
     and both values are dictionaries, it merges them recursively. If both are lists, it appends the items
     from the new list to the old list. Otherwise, the value in original_data is updated with the value from new_data.
-"""
+    """
     for key, value in new_data.items():
         if key in original_data:
             if isinstance(original_data[key], dict) and isinstance(value, dict):
@@ -174,19 +174,16 @@ def scan_subject_folder(subject_path, pre_processed):
 # Scans a run folder for TSV and metadata files
 def scan_run_folder(sample_path, pre_processed):
     tsv_files = []
-    runs = os.listdir(sample_path)
-    for run in runs:
-        run_path = os.path.join(sample_path, run)
-        run_results = os.listdir(run_path)
-        for result in run_results:
-            result_path = os.path.join(run_path, result)
-            if not pre_processed:
-                file = find_tsv_and_metadata_for_annotated(result_path)
-            else:
-                file = find_metadata_for_pre_processed(result_path)
+    repertoires = os.listdir(sample_path)
+    for rep in repertoires:
+        rep_path = os.path.join(sample_path, rep)
+        if not pre_processed:
+            file = find_tsv_and_metadata_for_annotated(rep_path)
+        else:
+            file = find_metadata_for_pre_processed(rep_path)
 
-            if file != None:
-                tsv_files.append(file[0])
+        if file != None:
+            tsv_files.append(file[0])
     
     return tsv_files
 
@@ -409,18 +406,25 @@ def main(project_name, source_folder, metadata_filename, target_repo_path):
     except Exception as e:
         print(f"An error occurred: {e}")
 
+
 if __name__ == "__main__":
-    # This is where you would parse command line arguments to the script
-    # For example:
-    # project_name = sys.argv[1]
-    # source_folder = sys.argv[2]
-    # metadata_filename = sys.argv[3]
-    # target_repo_path = sys.argv[4]
+    # Create the parser
+    # parser = argparse.ArgumentParser(description='Process some inputs.')
 
-    # Hardcoded for demonstration purposes
+    # # Add arguments
+    # parser.add_argument('project_name', type=str, help='Name of the project')
+    # parser.add_argument('source_folder', type=str, help='Path to the source folder')
+    # parser.add_argument('metadata_filename', type=str, help='Path to the metadata file')
+    # parser.add_argument('target_repo_path', type=str, help='Path to the target repository')
+
+    # # Parse the arguments
+    # args = parser.parse_args()
+    #main(args.project_name, args.source_folder, args.metadata_filename, args.target_repo_path)
+   
+   # Hardcoded for demonstration purposes
     project_name = r"PRJNA248411"
-    source_folder = r"/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/runs/current/"
-    metadata_filename = r"/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/project_metadata/metadata.json"
-    target_repo_path = r"/home/bcrlab/malachy7/digby_data/AIRR-seq/Human/IGH/"
-
+    source_folder = r"C:\Users\yaniv\Desktop\PRJNA248411\runs\current"
+    metadata_filename = r"C:\Users\yaniv\Desktop\PRJNA248411\project_metadata\metadata.json"
+    target_repo_path = r"C:\Users\yaniv\Desktop\digby_data\AIRR-seq\Human\IGH"
     main(project_name, source_folder, metadata_filename, target_repo_path)
+#python your_script.py "PRJNA248411" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/runs/current/" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/project_metadata/metadata.json" "/home/bcrlab/malachy7/digby_data/AIRR-seq/Human/IGH/"
