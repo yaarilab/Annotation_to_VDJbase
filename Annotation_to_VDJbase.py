@@ -3,11 +3,14 @@ import shutil
 import json
 import pandas as pd
 import argparse
+import subprocess
+import sys
+import datetime
+import time
 
-
-REQUIRED_FILES = ['haplotype', 'genotype', 'ogrdb_plots.pdf', 'ogrdb_report.csv']
-#SPLIT = '/'
-SPLIT= '\\'
+REQUIRED_FILES = ['haplotype', 'genotype.tsv', 'ogrdb_plots.pdf', 'ogrdb_report.csv']
+SPLIT = '/'
+#SPLIT= '\\'
 # Extracts repertoire, subject, and sample IDs from a JSON file
 def get_repertoire_details(file_path):
     
@@ -59,11 +62,20 @@ def copy_required_files(repertoire_mapping, tsv_map, project_dest):
             if repertoire_id == vdjbase_project['airr_repertoire_id']:
                 for file in projcet['required_files']:
                     file_name = file.split(SPLIT)[-1]
-                    destination_path = os.path.join(vdjbase_project_path, file_name)
+                    new_file_name = change_file_name_to_vdjbase(vdjbase_project['vdjbase_name'], file_name)
+                    destination_path = os.path.join(vdjbase_project_path, new_file_name)
+
                     copy_file(source_path=file, destination_path= destination_path)
         
 
-    
+def change_file_name_to_vdjbase(vdjbase_project_name ,file_name):
+    for file in REQUIRED_FILES:
+        if file in file_name:
+            if file == 'haplotype':
+                gene = file_name.split('Finale_')[1]
+                return vdjbase_project_name + '_' + gene
+            
+            return vdjbase_project_name + '_' + file
 
 # Updates project metadata with annotated metadata for a specific repertoire
 def update_annotated_metadata(project_metadata, repertoire_id, annotation_metadata):
@@ -363,15 +375,6 @@ def verify_annotations_exist(sequence_data_store_path, airr_correspondence_path,
     return True  # Return True if all checks pass
 
 
-def copy_files(source, destination, file_names):
-    for file_name in file_names:
-        source_file = os.path.join(source, file_name)
-        if os.path.isfile(source_file):
-            shutil.copy(source_file, destination)
-        else:
-            print(f"Required file not found: {source_file}")
-            # If the file is required, you may want to raise an exception here instead of just printing.
-
 def consolidate_metadata(repertoire_metadata_file, additional_metadata_paths):
     with open(repertoire_metadata_file, 'r') as f:
         metadata = json.load(f)
@@ -384,9 +387,79 @@ def consolidate_metadata(repertoire_metadata_file, additional_metadata_paths):
     
     return metadata
 
+def check_file(path):
+    # Check if the file exists and is not empty
+    if os.path.exists(path) and os.path.getsize(path) > 0:
+        return True
+    else:
+        return False
+
+def last_modified_time(path):
+    # Get the last modified time of the file
+    return time.ctime(os.path.getmtime(path))
+
+def check_files_updated(target_repo_path):
+    db_path = os.path.join(target_repo_path, "db.sqlite3")
+    samples_path = os.path.join(target_repo_path, "samples.zip")
+
+    # Check db.sqlite3
+    if not check_file(db_path):
+        raise Exception("db.sqlite3 does not exist or is empty.")
+
+    # Check samples.zip
+    if not check_file(samples_path):
+        raise Exception("samples.zip does not exist or is empty.")
+
+def run_git_command(command):
+    try:
+        result = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
+        return result.strip()
+    except subprocess.CalledProcessError as e:
+        print("Error executing Git command:", e.output)
+        sys.exit(1)
+
+def is_repo_up_to_date(repo_path):
+    # Change to the repository directory
+    original_dir = subprocess.os.getcwd()
+    subprocess.os.chdir(repo_path)
+
+    # Fetch the latest updates from remote without merging
+    run_git_command("git fetch")
+
+    # Get the latest commit hash of the local branch
+    local_commit = run_git_command("git rev-parse HEAD")
+
+    # Get the latest commit hash of the remote branch
+    remote_commit = run_git_command("git rev-parse @{u}")
+
+    # Change back to the original directory
+    subprocess.os.chdir(original_dir)
+
+    return local_commit == remote_commit
+
+
+
+def ordinal(n):
+    return "%d%s" % (n, "tsnrhtdd"[((n//10%10!=1)*(n%10<4)*n%10)::4])
+
+def update_description_file(target_repo_path):
+    description_path = os.path.join(target_repo_path, "db_description.txt")
+    res = target_repo_path.split('\\') #need to change!!!
+    with open(description_path, 'w') as file:
+        date = datetime.datetime.now()
+        formatted_date = date.strftime(f"{ordinal(date.day)} %B %Y")
+        file.write(f'Analysis of {res[-2]} {res[-1]} datsets, compiled {formatted_date}')
+
 def main(project_name, source_folder, metadata_filename, target_repo_path):
     try:
-        # Verify that the source folder and target repo path exist
+        parts = target_repo_path.split('/')
+        repo_path = '/'.join(parts[:-3])
+        #Verify that the source folder and target repo path exist
+        if is_repo_up_to_date(repo_path):
+            print("The repository is up-to-date with the remote GitHub repository.")
+        else:
+            raise Exception("The repository is not up-to-date with the remote GitHub repository.")
+
         verify_directory_exists(source_folder)
         verify_directory_exists(target_repo_path)
 
@@ -402,6 +475,11 @@ def main(project_name, source_folder, metadata_filename, target_repo_path):
         copy_folder_content(source_folder, target_repo_path, vdjbase_project_name, project_number, metadata_filename, repertoire_mapping)
 
         print("Data copy completed successfully.")
+        os.chdir(target_repo_path)
+        bat_file = os.path.join(target_repo_path, 'make.bat')
+        subprocess.run(bat_file, shell=True)
+        check_files_updated(target_repo_path)
+        update_description_file(target_repo_path)
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -409,22 +487,22 @@ def main(project_name, source_folder, metadata_filename, target_repo_path):
 
 if __name__ == "__main__":
     # Create the parser
-    # parser = argparse.ArgumentParser(description='Process some inputs.')
+    parser = argparse.ArgumentParser(description='Process some inputs.')
 
-    # # Add arguments
-    # parser.add_argument('project_name', type=str, help='Name of the project')
-    # parser.add_argument('source_folder', type=str, help='Path to the source folder')
-    # parser.add_argument('metadata_filename', type=str, help='Path to the metadata file')
-    # parser.add_argument('target_repo_path', type=str, help='Path to the target repository')
+    # Add arguments
+    parser.add_argument('project_name', type=str, help='Name of the project')
+    parser.add_argument('source_folder', type=str, help='Path to the source folder')
+    parser.add_argument('metadata_filename', type=str, help='Path to the metadata file')
+    parser.add_argument('target_repo_path', type=str, help='Path to the target repository')
 
-    # # Parse the arguments
-    # args = parser.parse_args()
-    #main(args.project_name, args.source_folder, args.metadata_filename, args.target_repo_path)
+    # Parse the arguments
+    args = parser.parse_args()
+    main(args.project_name, args.source_folder, args.metadata_filename, args.target_repo_path)
    
    # Hardcoded for demonstration purposes
-    project_name = r"PRJNA248411"
-    source_folder = r"C:\Users\yaniv\Desktop\PRJNA248411\runs\current"
-    metadata_filename = r"C:\Users\yaniv\Desktop\PRJNA248411\project_metadata\metadata.json"
-    target_repo_path = r"C:\Users\yaniv\Desktop\digby_data\AIRR-seq\Human\IGH"
-    main(project_name, source_folder, metadata_filename, target_repo_path)
+    # project_name = r"PRJNA248475"
+    # source_folder = r"C:\Users\yaniv\Desktop\PRJNA248475\runs\current"
+    # metadata_filename = r"C:\Users\yaniv\Desktop\PRJNA248475\project_metadata\metadata.json"
+    # target_repo_path = r"C:\Users\yaniv\Desktop\digby_data\AIRR-seq\Human\IGH"
+    # main(project_name, source_folder, metadata_filename, target_repo_path)
 #python your_script.py "PRJNA248411" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/runs/current/" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/project_metadata/metadata.json" "/home/bcrlab/malachy7/digby_data/AIRR-seq/Human/IGH/"
