@@ -211,7 +211,7 @@ def find_metadata_for_pre_processed(result_path):
         folder_path = os.path.join(result_path, folder)
         folder_files = os.listdir(folder_path)
         
-        if 'meta_data' in folder:
+        if 'metadata' in folder:
             if 'pre_processed_metadata.json' in folder_files:
                 res['pre_processed_metadata'] = os.path.join(folder_path, 'pre_processed_metadata.json')
             
@@ -366,7 +366,16 @@ def verify_annotations_exist(sequence_data_store_path, airr_correspondence_path,
     # Verify that each expected file pattern has at least one matching 'Final' file
     missing_annotations = []
     for repertoire in expected_repertoires:
-        if not any(repertoire in f for f in found_files):
+        print(repertoire)
+        
+        found = False
+        for f in found_files:
+            # Convert both operands to strings if they are not already
+            if str(repertoire) in str(f):
+                found = True
+                break
+
+        if not found:
             missing_annotations.append(repertoire)
 
     if missing_annotations:
