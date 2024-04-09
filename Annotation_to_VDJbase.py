@@ -58,8 +58,8 @@ def copy_required_files(repertoire_mapping, tsv_map, project_dest):
             with open(projcet['repertoire_ids'], 'r') as repertoire:
                 repertoire_data = json.load(repertoire)
                 repertoire_id = repertoire_data['repertoire_id']
-
-            if repertoire_id == vdjbase_project['airr_repertoire_id']:
+            
+            if str(repertoire_id) == str(vdjbase_project['airr_repertoire_id']):
                 for file in projcet['required_files']:
                     file_name = file.split(SPLIT)[-1]
                     new_file_name = change_file_name_to_vdjbase(vdjbase_project['vdjbase_name'], file_name)
@@ -461,7 +461,7 @@ def update_description_file(target_repo_path):
 
 def main(project_name, source_folder, metadata_filename, target_repo_path):
     try:
-        parts = target_repo_path.split('/')
+        parts = target_repo_path.split(SPLIT)
         repo_path = '/'.join(parts[:-3])
         #Verify that the source folder and target repo path exist
         if is_repo_up_to_date(repo_path):
@@ -499,19 +499,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some inputs.')
 
     # Add arguments
-    parser.add_argument('project_name', type=str, help='Name of the project')
-    parser.add_argument('source_folder', type=str, help='Path to the source folder')
-    parser.add_argument('metadata_filename', type=str, help='Path to the metadata file')
-    parser.add_argument('target_repo_path', type=str, help='Path to the target repository')
+    # parser.add_argument('project_name', type=str, help='Name of the project')
+    # parser.add_argument('source_folder', type=str, help='Path to the source folder')
+    # parser.add_argument('metadata_filename', type=str, help='Path to the metadata file')
+    # parser.add_argument('target_repo_path', type=str, help='Path to the target repository')
 
-    # Parse the arguments
-    args = parser.parse_args()
-    main(args.project_name, args.source_folder, args.metadata_filename, args.target_repo_path)
+    # # Parse the arguments
+    # args = parser.parse_args()
+    # main(args.project_name, args.source_folder, args.metadata_filename, args.target_repo_path)
    
    # Hardcoded for demonstration purposes
-    # project_name = r"PRJNA248475"
-    # source_folder = r"C:\Users\yaniv\Desktop\PRJNA248475\runs\current"
-    # metadata_filename = r"C:\Users\yaniv\Desktop\PRJNA248475\project_metadata\metadata.json"
-    # target_repo_path = r"C:\Users\yaniv\Desktop\digby_data\AIRR-seq\Human\IGH"
-    # main(project_name, source_folder, metadata_filename, target_repo_path)
+    project_name = r"PRJNA248475"
+    source_folder = r"C:\Users\yaniv\Desktop\PRJNA248475\runs\current"
+    metadata_filename = r"C:\Users\yaniv\Desktop\PRJNA248475\project_metadata\metadata.json"
+    target_repo_path = r"C:\Users\yaniv\Desktop\test\digby_data\AIRR-seq\Human\IGH"
+    main(project_name, source_folder, metadata_filename, target_repo_path)
 #python your_script.py "PRJNA248411" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/runs/current/" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/project_metadata/metadata.json" "/home/bcrlab/malachy7/digby_data/AIRR-seq/Human/IGH/"
