@@ -499,19 +499,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some inputs.')
 
     # Add arguments
-    # parser.add_argument('project_name', type=str, help='Name of the project')
-    # parser.add_argument('source_folder', type=str, help='Path to the source folder')
-    # parser.add_argument('metadata_filename', type=str, help='Path to the metadata file')
-    # parser.add_argument('target_repo_path', type=str, help='Path to the target repository')
+    parser.add_argument('project_name', type=str, help='Name of the project')
+    parser.add_argument('source_folder', type=str, help='Path to the source folder')
+    parser.add_argument('metadata_filename', type=str, help='Path to the metadata file')
+    parser.add_argument('target_repo_path', type=str, help='Path to the target repository')
 
-    # # Parse the arguments
-    # args = parser.parse_args()
-    # main(args.project_name, args.source_folder, args.metadata_filename, args.target_repo_path)
+    # Parse the arguments
+    args = parser.parse_args()
+    main(args.project_name, args.source_folder, args.metadata_filename, args.target_repo_path)
    
    # Hardcoded for demonstration purposes
-    project_name = r"PRJNA248475"
-    source_folder = r"C:\Users\yaniv\Desktop\PRJNA248475\runs\current"
-    metadata_filename = r"C:\Users\yaniv\Desktop\PRJNA248475\project_metadata\metadata.json"
-    target_repo_path = r"C:\Users\yaniv\Desktop\test\digby_data\AIRR-seq\Human\IGH"
-    main(project_name, source_folder, metadata_filename, target_repo_path)
+    # project_name = r"PRJNA248475"
+    # source_folder = r"C:\Users\yaniv\Desktop\PRJNA248475\runs\current"
+    # metadata_filename = r"C:\Users\yaniv\Desktop\PRJNA248475\project_metadata\metadata.json"
+    # target_repo_path = r"C:\Users\yaniv\Desktop\test\digby_data\AIRR-seq\Human\IGH"
+    # main(project_name, source_folder, metadata_filename, target_repo_path)
 #python your_script.py "PRJNA248411" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/runs/current/" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/project_metadata/metadata.json" "/home/bcrlab/malachy7/digby_data/AIRR-seq/Human/IGH/"
