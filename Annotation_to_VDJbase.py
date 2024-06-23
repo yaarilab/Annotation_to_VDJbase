@@ -23,7 +23,7 @@ def get_repertoire_details(file_path):
     return repertoire_id, subject_id, sample_id
 
 # Merges metadata from various sources into a single JSON file in the destination project
-def merge_metadata(metadata_filename, project_dest, tsv_map, pre_processed_map, vdjbase_project_name, repertoire_mapping):
+def merge_metadata(metadata_filename, project_dest, tsv_map, pre_processed_map, vdjbase_project_name, repertoire_mapping, chain):
     with open(metadata_filename, 'r') as metadata:
         project_metadata = json.load(metadata)
 
@@ -35,6 +35,7 @@ def merge_metadata(metadata_filename, project_dest, tsv_map, pre_processed_map, 
         
         for file in pre_processed_map:
             repertoire_id, subject_id, sample_id = get_repertoire_details(file['repertoire_ids'])
+            repertoire_id = repertoire_id + "_" + chain
             with open(file['pre_processed_metadata'], 'r') as pre_processed_metadata:
                 pre_processed_metadata = json.load(pre_processed_metadata)
                 update_pre_processed_metadata(project_metadata, repertoire_id, pre_processed_metadata)
@@ -57,14 +58,13 @@ def copy_required_files(repertoire_mapping, tsv_map, project_dest):
             repertoire_id = None
             with open(projcet['repertoire_ids'], 'r') as repertoire:
                 repertoire_data = json.load(repertoire)
-                repertoire_id = repertoire_data['repertoire_id']
-            
+                repertoire_id = repertoire_data['repertoire_id'].split('_')[0]
+              
             if str(repertoire_id) == str(vdjbase_project['airr_repertoire_id']):
                 for file in projcet['required_files']:
                     file_name = file.split(SPLIT)[-1]
                     new_file_name = change_file_name_to_vdjbase(vdjbase_project['vdjbase_name'], file_name)
                     destination_path = os.path.join(vdjbase_project_path, new_file_name)
-
                     copy_file(source_path=file, destination_path= destination_path)
         
 
@@ -115,14 +115,33 @@ def merge_json_data_recursive(original_data, new_data):
 
 
 # Copies content from a source directory to a destination directory and merges metadata
-def copy_folder_content(source_folder, target_repo_path, vdjbase_project_name,project_number, metadata_filename, repertoire_mapping):
+def copy_folder_content(source_folder, target_repo_path, vdjbase_project_name,project_number, metadata_filename, repertoire_mapping, chain):
     # Create the destination directory if it does not exist
     if not os.path.exists(target_repo_path):
         os.makedirs(target_repo_path)
     
-    tsv_files_paths, pre_processed_files = find_project_tsv_files(source_folder)
+    tsv_files_paths, pre_processed_files = find_project_tsv_files(source_folder, chain)
 
-    merge_metadata(metadata_filename, target_repo_path, tsv_files_paths, pre_processed_files, vdjbase_project_name, repertoire_mapping)
+    merge_metadata(metadata_filename, target_repo_path, tsv_files_paths, pre_processed_files, vdjbase_project_name, repertoire_mapping, chain)
+    
+    copy_json_file(metadata_filename,target_repo_path,f'{vdjbase_project_name}.json')
+
+def copy_json_file(source_file, destination_folder, file_name):
+    # Check if both folders exist
+    if not os.path.exists(destination_folder):
+        print(f"Destination folder '{destination_folder}' does not exist.")
+        return
+    
+    # Check if the file exists in the source folder
+
+    if not os.path.isfile(source_file):
+        print(f"File '{file_name}' does not exist in the source folder.")
+        return
+    
+    # Copy the file
+    destination_file_path = os.path.join(destination_folder, file_name)
+    shutil.copy(source_file, destination_file_path)
+    print(f"File '{file_name}' copied successfully from '{source_file}' to '{destination_folder}'.")
 
 
 def copy_file(source_path, destination_path):
@@ -143,10 +162,10 @@ def copy_file(source_path, destination_path):
 
 
 # Finds TSV files and pre-processed files within a project directory
-def find_project_tsv_files(project_path):
+def find_project_tsv_files(project_path, chain):
     pre_processed_folders = []
     try:
-        annotated_folder_path = os.path.join(project_path, 'annotated')
+        annotated_folder_path = os.path.join(project_path, f'{chain}_annotated')
         annotated_folders = os.listdir(annotated_folder_path)
         pre_processed_folder_path = os.path.join(project_path, 'pre_processed')
         if os.path.exists(pre_processed_folder_path):
@@ -342,31 +361,31 @@ def derive_vdjbase_project_mapping(airr_correspondence_path, project_name):
     return mapping
 
 
-def verify_annotations_exist(sequence_data_store_path, airr_correspondence_path, project_name):
+def verify_annotations_exist(sequence_data_store_path, airr_correspondence_path, project_name, chain):
     # Read the airr_correspondence.csv to get the expected repertoire IDs and corresponding file patterns
     correspondence_df = pd.read_csv(airr_correspondence_path)
     filtered_df = correspondence_df[correspondence_df['airr_file'].str.contains(project_name)]
     expected_repertoires = filtered_df['airr_repertoire_id'].tolist()
+    
     #expected_repertoires = correspondence_df['airr_repertoire_id'].to_list()
     
     # Dictionary to hold the found 'Final' files
     found_files = []
 
     # Walk through the annotated directory to find 'Final' files
-    annotated_path = os.path.join(sequence_data_store_path, 'annotated')
+    annotated_path = os.path.join(sequence_data_store_path, f'{chain}_annotated')
     if not os.path.isdir(annotated_path):
         raise FileNotFoundError(r"there is no annotated file for {sequence_data_store_path}")
         
-
+    
     for root, dirs, files in os.walk(annotated_path):
         for file in files:
             if "Final" in file:
                 found_files.append(file)
-
+    
     # Verify that each expected file pattern has at least one matching 'Final' file
     missing_annotations = []
     for repertoire in expected_repertoires:
-        print(repertoire)
         
         found = False
         for f in found_files:
@@ -375,9 +394,13 @@ def verify_annotations_exist(sequence_data_store_path, airr_correspondence_path,
                 found = True
                 break
 
+    if not found:
+        missing_annotations.append(repertoire)
+
+    
         if not found:
             missing_annotations.append(repertoire)
-
+    
     if missing_annotations:
         raise FileNotFoundError(f"Missing 'Final' annotation files for the following patterns: {', '.join(missing_annotations)}")
     
@@ -459,15 +482,44 @@ def update_description_file(target_repo_path):
         formatted_date = date.strftime(f"{ordinal(date.day)} %B %Y")
         file.write(f'Analysis of {res[-2]} {res[-1]} datsets, compiled {formatted_date}')
 
+def convert_empty_to_null(json_file):
+    # Read the JSON file
+    with open(json_file, 'r') as file:
+        data = json.load(file)
+
+    # Function to recursively convert empty strings to null
+    def convert(obj):
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                obj[key] = convert(value)
+        elif isinstance(obj, list):
+            return [convert(item) for item in obj]
+        elif obj == "":
+            return None
+        else:
+            return obj
+
+    # Convert the JSON data
+    converted_data = convert(data)
+
+    # Write the modified JSON back to the file
+    with open(json_file, 'w') as file:
+        json.dump(converted_data, file, indent=4)
+
+    print(f"Conversion completed for {json_file}")
+
+
 def main(project_name, source_folder, metadata_filename, target_repo_path):
     try:
-        parts = target_repo_path.split(SPLIT)
+        parts = target_repo_path.split('/')
         repo_path = '/'.join(parts[:-3])
+        chain = parts[-1]
+        
         #Verify that the source folder and target repo path exist
-        if is_repo_up_to_date(repo_path):
-            print("The repository is up-to-date with the remote GitHub repository.")
-        else:
-            raise Exception("The repository is not up-to-date with the remote GitHub repository.")
+        #if is_repo_up_to_date(repo_path):
+        #    print("The repository is up-to-date with the remote GitHub repository.")
+        #else:
+        #    raise Exception("The repository is not up-to-date with the remote GitHub repository.")
 
         verify_directory_exists(source_folder)
         verify_directory_exists(target_repo_path)
@@ -477,18 +529,17 @@ def main(project_name, source_folder, metadata_filename, target_repo_path):
         repertoire_mapping = derive_vdjbase_project_mapping(airr_correspondence_path, project_name)
         
         # Verify annotations exist
-        verify_annotations_exist(source_folder, airr_correspondence_path, project_name)
+        verify_annotations_exist(source_folder, airr_correspondence_path, project_name, chain)
+        
         first_key = next(iter(repertoire_mapping.keys()))# Access the first key
         project_number = repertoire_mapping[first_key]['project_number']
+        
         vdjbase_project_name = project_number + ('_' + project_name)
-        copy_folder_content(source_folder, target_repo_path, vdjbase_project_name, project_number, metadata_filename, repertoire_mapping)
+        copy_folder_content(source_folder, target_repo_path, vdjbase_project_name, project_number, metadata_filename, repertoire_mapping, chain)
 
         print("Data copy completed successfully.")
-        os.chdir(target_repo_path)
-        bat_file = os.path.join(target_repo_path, 'make.bat')
-        subprocess.run(bat_file, shell=True)
-        check_files_updated(target_repo_path)
-        update_description_file(target_repo_path)
+        #convert_empty_to_null(metadata_filename)
+
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -509,9 +560,9 @@ if __name__ == "__main__":
     main(args.project_name, args.source_folder, args.metadata_filename, args.target_repo_path)
    
    # Hardcoded for demonstration purposes
-    # project_name = r"PRJNA248475"
-    # source_folder = r"C:\Users\yaniv\Desktop\PRJNA248475\runs\current"
-    # metadata_filename = r"C:\Users\yaniv\Desktop\PRJNA248475\project_metadata\metadata.json"
-    # target_repo_path = r"C:\Users\yaniv\Desktop\test\digby_data\AIRR-seq\Human\IGH"
+    # project_name = r"PRJEB26509"
+    # source_folder = r"C:\Users\yaniv\Desktop\PRJEB26509\runs\current"
+    # metadata_filename = r"C:\Users\yaniv\Desktop\PRJEB26509\project_metadata\P1_PRJEB26509_IGK.json"
+    # target_repo_path = r"C:\Users\yaniv\Desktop\test\digby_dev_data\AIRR-seq\Human\IGH"
     # main(project_name, source_folder, metadata_filename, target_repo_path)
 #python your_script.py "PRJNA248411" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/runs/current/" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/project_metadata/metadata.json" "/home/bcrlab/malachy7/digby_data/AIRR-seq/Human/IGH/"
