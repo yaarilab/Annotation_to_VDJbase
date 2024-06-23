@@ -40,12 +40,16 @@ def merge_metadata(metadata_filename, project_dest, tsv_map, pre_processed_map, 
                 pre_processed_metadata = json.load(pre_processed_metadata)
                 update_pre_processed_metadata(project_metadata, repertoire_id, pre_processed_metadata)
 
-        # Write the updated project_metadata to a new JSON file
         new_metadata_path = os.path.join(project_dest, f'{vdjbase_project_name}.json')
+        
+        # Write the updated project_metadata to a new JSON file
         with open(new_metadata_path, 'w') as new_metadata_file:
             json.dump(project_metadata, new_metadata_file, indent=4)
 
+        
         copy_required_files(repertoire_mapping, tsv_map, project_dest)
+    
+
 
 def copy_required_files(repertoire_mapping, tsv_map, project_dest):
     for vdjbase_project in repertoire_mapping:
@@ -514,7 +518,7 @@ def main(project_name, source_folder, metadata_filename, target_repo_path):
         parts = target_repo_path.split('/')
         repo_path = '/'.join(parts[:-3])
         chain = parts[-1]
-        
+
         #Verify that the source folder and target repo path exist
         #if is_repo_up_to_date(repo_path):
         #    print("The repository is up-to-date with the remote GitHub repository.")
@@ -563,6 +567,6 @@ if __name__ == "__main__":
     # project_name = r"PRJEB26509"
     # source_folder = r"C:\Users\yaniv\Desktop\PRJEB26509\runs\current"
     # metadata_filename = r"C:\Users\yaniv\Desktop\PRJEB26509\project_metadata\P1_PRJEB26509_IGK.json"
-    # target_repo_path = r"C:\Users\yaniv\Desktop\test\digby_dev_data\AIRR-seq\Human\IGH"
+    # target_repo_path = r"C:\Users\yaniv\Desktop\test\digby_dev_data\AIRR-seq\Human\IGK"
     # main(project_name, source_folder, metadata_filename, target_repo_path)
 #python your_script.py "PRJNA248411" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/runs/current/" "/home/bcrlab/malachy7/sequence_data_store_test/PRJNA248411/project_metadata/metadata.json" "/home/bcrlab/malachy7/digby_data/AIRR-seq/Human/IGH/"
