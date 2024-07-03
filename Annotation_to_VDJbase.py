@@ -24,6 +24,7 @@ def get_repertoire_details(file_path):
 
 # Merges metadata from various sources into a single JSON file in the destination project
 def merge_metadata(metadata_filename, project_dest, tsv_map, pre_processed_map, vdjbase_project_name, repertoire_mapping, chain):
+    project_metadata = None
     with open(metadata_filename, 'r') as metadata:
         project_metadata = json.load(metadata)
 
@@ -39,9 +40,8 @@ def merge_metadata(metadata_filename, project_dest, tsv_map, pre_processed_map, 
             with open(file['pre_processed_metadata'], 'r') as pre_processed_metadata:
                 pre_processed_metadata = json.load(pre_processed_metadata)
                 update_pre_processed_metadata(project_metadata, repertoire_id, pre_processed_metadata)
-
-        new_metadata_path = os.path.join(project_dest, f'{vdjbase_project_name}.json')
         
+        new_metadata_path = os.path.join(project_dest, f'{vdjbase_project_name}.json')
         # Write the updated project_metadata to a new JSON file
         with open(new_metadata_path, 'w') as new_metadata_file:
             json.dump(project_metadata, new_metadata_file, indent=4)
@@ -128,25 +128,6 @@ def copy_folder_content(source_folder, target_repo_path, vdjbase_project_name,pr
 
     merge_metadata(metadata_filename, target_repo_path, tsv_files_paths, pre_processed_files, vdjbase_project_name, repertoire_mapping, chain)
     
-    copy_json_file(metadata_filename,target_repo_path,f'{vdjbase_project_name}.json')
-
-def copy_json_file(source_file, destination_folder, file_name):
-    # Check if both folders exist
-    if not os.path.exists(destination_folder):
-        print(f"Destination folder '{destination_folder}' does not exist.")
-        return
-    
-    # Check if the file exists in the source folder
-
-    if not os.path.isfile(source_file):
-        print(f"File '{file_name}' does not exist in the source folder.")
-        return
-    
-    # Copy the file
-    destination_file_path = os.path.join(destination_folder, file_name)
-    shutil.copy(source_file, destination_file_path)
-    print(f"File '{file_name}' copied successfully from '{source_file}' to '{destination_folder}'.")
-
 
 def copy_file(source_path, destination_path):
     """
